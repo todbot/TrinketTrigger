@@ -25,9 +25,6 @@ switch_pin = digitalio.DigitalInOut(board.D0)
 switch_pin.switch_to_input(pull=digitalio.Pull.UP)
 switch = Debouncer( switch_pin )
 
-t0 = ticks_ms()  #time.monotonic() # set start time
-
-
 def map_range(x, in_min, in_max, out_min, out_max):
     in_range = in_max - in_min
     in_delta = x - in_min
@@ -43,7 +40,11 @@ def map_range(x, in_min, in_max, out_min, out_max):
         return max(min(mapped, out_max), out_min)
     return min(max(mapped, out_max), out_min)   
 
+
+# we're doing "analog" reading of touchA, so get our own baseline
 touchA_min = touchA.raw_value
+# because of long traces to touchB, we need to adjust threshold up a bit
+touchB.threshold += 500
 
 last_press_time = ticks_ms()
 last_gate_time = ticks_ms()
@@ -55,6 +56,9 @@ while True:
     switch.update()
     now = ticks_ms()
 
+    # r = 0-255 mapped analog touch value on A output
+    # g = tap-tempo beat, if any, on B output
+    # b = on/off touch value on B output
     r = map_range(touchA.raw_value, touchA_min,touchA_min*2, 0,255)
     g = 0
     b = 0
@@ -68,11 +72,13 @@ while True:
             print(now,"beat", interval, gate_duration)
             g = 255
 
+    # we're using raw_value instead, so this is just for diagnostic
     if touchA.value:
-        pass # print(now,"boop the snoot")
+        print(now,touchA.raw_value, touchA.threshold)
 
     if touchB.value:
-        b = 255 # set blue LED to indicate B touch
+        b = 255  # set b to indicate B touch
+        print(now,touchB.raw_value, touchB.threshold)
 
     if switch.fell:
         print(now,"tap")
@@ -81,12 +87,16 @@ while True:
         do_tap_tempo = True
         g = 255
 
-    if switch.rose:
-        gate_duration = now - last_press_time
-        print(now, "gate_duration:", gate_duration)
+    if switch.value == False:  # still pressed
+        g = 255
         if now - last_press_time > 2000:  # turn off on long-press
             interval = 0
             do_tap_tempo = False
+            g = 0
+
+    if switch.rose:
+        gate_duration = now - last_press_time
+        print(now, "gate_duration:", gate_duration)
             
     # Do the LED output
     # - red part of LED indicates A touch amount
