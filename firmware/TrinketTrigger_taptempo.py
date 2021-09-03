@@ -48,6 +48,7 @@ touchA_min = touchA.raw_value
 last_press_time = ticks_ms()
 last_gate_time = ticks_ms()
 interval = 500  # milliseconds between
+gate_duration = 100  # milliseconds gate is high in tap tempo mode
 do_tap_tempo = False
 
 while True:
@@ -55,22 +56,23 @@ while True:
     now = ticks_ms()
 
     r = map_range(touchA.raw_value, touchA_min,touchA_min*2, 0,255)
-
     g = 0
+    b = 0
+
     # beat tap-tempo
-    if do_tap_tempo and now - last_gate_time > interval:
-        last_gate_time = now # + interval
-        print(now,"beat")
-        g = 255
+    if do_tap_tempo:
+        if now - last_gate_time < gate_duration :
+            g = 255
+        if now - last_gate_time > interval:
+            last_gate_time = now  
+            print(now,"beat", interval, gate_duration)
+            g = 255
 
     if touchA.value:
-        pass #print(now,"boop")
+        pass # print(now,"boop the snoot")
 
-    b = 0
     if touchB.value:
-        b = 255
-        # set blue part of doststar LED to indicate B touch
-        #dots[0] = (0,0,255)
+        b = 255 # set blue LED to indicate B touch
 
     if switch.fell:
         print(now,"tap")
@@ -78,22 +80,22 @@ while True:
         last_press_time = now
         do_tap_tempo = True
         g = 255
-        # set blue part of doststar LED to indicate B touch
-        #dots[0] = (0,255,0)
 
     if switch.rose:
-        if now - last_press_time > 1000:  # turn off on long-press
+        gate_duration = now - last_press_time
+        print(now, "gate_duration:", gate_duration)
+        if now - last_press_time > 2000:  # turn off on long-press
             interval = 0
             do_tap_tempo = False
             
-    # do the LED output
+    # Do the LED output
+    # - red part of LED indicates A touch amount
+    # - grn part of LED indicates B tap-tempo output
+    # - blu part of LED indicates B gate output
     leds[0] = (int(r), g, b)
 
-    # do the CV output
-    # red part of LED indicates A touch amount
-    # grn part of LED indicates B tap-tempo output
-    # blu part of LED indicates B gate output
-    #
+    # Do the CV output
+    # - A output is analog CV, based on A touch raw_value
+    # - B output is digital gate, based on B touch value or tap tempo beat
     dac.value = int(r * 256)
-    #gate.value = touchB.value
     gate.value = (g or b) # if either tap-tempo or B press
