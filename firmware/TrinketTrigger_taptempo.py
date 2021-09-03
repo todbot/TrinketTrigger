@@ -1,5 +1,6 @@
-# Trinket Trigger 1.0
-# todbot
+# Trinket_Trigger_taptempo.py -- use the "rec" switch to tap tempo gate on B output
+# 2021Sep09 - @todbot
+# Requires CircuitPython 7
 
 import time
 import board
@@ -63,17 +64,16 @@ while True:
         g = 255
 
     if touchA.value:
-        print(now,"boop")
+        pass #print(now,"boop")
 
     b = 0
     if touchB.value:
-        print(now,"flooop")
         b = 255
         # set blue part of doststar LED to indicate B touch
         #dots[0] = (0,0,255)
 
     if switch.fell:
-        print(now,"BLARHG")
+        print(now,"tap")
         interval = now - last_press_time
         last_press_time = now
         do_tap_tempo = True
@@ -94,7 +94,6 @@ while True:
     # grn part of LED indicates B tap-tempo output
     # blu part of LED indicates B gate output
     #
-    #dots[0] = (int(v),0,0)
-    #dac.value = int(r * 256)
+    dac.value = int(r * 256)
     #gate.value = touchB.value
-
+    gate.value = (g or b) # if either tap-tempo or B press
